@@ -1,3 +1,5 @@
+import os
+
 from transformers import CLIPSegProcessor, CLIPSegForImageSegmentation
 
 from PIL import Image
@@ -9,6 +11,8 @@ from torchvision.transforms.functional import to_pil_image
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
+import execution_context
+import folder_paths
 
 import cv2
 
@@ -19,7 +23,6 @@ from typing import Optional, Tuple
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="torch")
 warnings.filterwarnings("ignore", category=UserWarning, module="safetensors")
-
 
 
 """Helper methods for CLIPSeg nodes"""
@@ -88,6 +91,9 @@ class CLIPSeg:
                         "blur": ("FLOAT", {"min": 0, "max": 15, "step": 0.1, "default": 7}),
                         "threshold": ("FLOAT", {"min": 0, "max": 1, "step": 0.05, "default": 0.4}),
                         "dilation_factor": ("INT", {"min": 0, "max": 10, "step": 1, "default": 4}),
+                    },
+                "hidden": {
+                        "context": "EXECUTION_CONTEXT",
                     }
                 }
 
@@ -96,7 +102,7 @@ class CLIPSeg:
     RETURN_NAMES = ("Mask","Heatmap Mask", "BW Mask")
 
     FUNCTION = "segment_image"
-    def segment_image(self, image: torch.Tensor, text: str, blur: float, threshold: float, dilation_factor: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def segment_image(self, image: torch.Tensor, text: str, blur: float, threshold: float, dilation_factor: int, context: execution_context.ExecutionContext) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Create a segmentation mask from an image and a text prompt using CLIPSeg.
 
         Args:
@@ -115,8 +121,10 @@ class CLIPSeg:
         # Create a PIL image from the numpy array
         i = Image.fromarray(image_np, mode="RGB")
 
-        processor = CLIPSegProcessor.from_pretrained("CIDAS/clipseg-rd64-refined")
-        model = CLIPSegForImageSegmentation.from_pretrained("CIDAS/clipseg-rd64-refined")
+        base_path = folder_paths.get_folder_paths("clipseg")
+        model_path = os.path.join(base_path[0], "clipseg-rd64-refined")
+        processor = CLIPSegProcessor.from_pretrained(model_path)
+        model = CLIPSegForImageSegmentation.from_pretrained(model_path)
         
         prompt = text
         
